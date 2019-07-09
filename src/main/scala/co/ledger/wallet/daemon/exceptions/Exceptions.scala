@@ -58,6 +58,11 @@ case class UserAlreadyExistException(pubKey: String) extends {
   val code = ErrorCodes.USER_ALREADY_EXIST
 } with Exception(msg) with DaemonException
 
+case class InvalidCurrencyForErc20Operation() extends {
+  val msg = "ERC20 Operation with non ETH account"
+  val code = ErrorCodes.INVALID_CURRENCY_FOR_ERC20
+} with Exception(msg) with DaemonException
+
 case class CoreBadRequestException(msg: String, t: Throwable) extends Exception(msg, t) with DaemonException {
   def code: Int = ErrorCodes.CORE_BAD_REQUEST
 }
@@ -90,6 +95,7 @@ object ErrorCodes {
   val USER_NOT_FOUND = 207
   val USER_ALREADY_EXIST = 208
   val CURRENCY_NOT_SUPPORTED = 209
+  val INVALID_CURRENCY_FOR_ERC20 = 210
   val CORE_BAD_REQUEST = 301
   val DAEMON_DATABASE_EXCEPTION = 302
 }

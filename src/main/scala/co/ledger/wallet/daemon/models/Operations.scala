@@ -4,8 +4,10 @@ import java.util.{Date, UUID}
 
 import co.ledger.core
 import co.ledger.wallet.daemon.async.MDCPropagatingExecutionContext.Implicits.global
+import co.ledger.wallet.daemon.exceptions.InvalidCurrencyForErc20Operation
 import co.ledger.wallet.daemon.models.Wallet.RichCoreWallet
 import co.ledger.wallet.daemon.models.coins.Coin.TransactionView
+import co.ledger.wallet.daemon.models.coins.EthereumTransactionView.ERC20
 import co.ledger.wallet.daemon.models.coins.{Bitcoin, EthereumTransactionView}
 import com.fasterxml.jackson.annotation.JsonProperty
 
@@ -26,6 +28,16 @@ object Operations {
     } yield Option(operation.getBlockHeight) match {
       case Some(opHeight) => currentHeight - opHeight + 1
       case None => 0L
+    }
+  }
+
+  def getErc20View(erc20Operation: core.ERC20LikeOperation, operation: core.Operation, wallet: core.Wallet, account: core.Account): Future[OperationView] = {
+    getView(operation, wallet, account).map {view =>
+      val tvOpt = view.transaction.map {
+          case e: EthereumTransactionView => e.copy(erc20 = Some(ERC20.from(erc20Operation)))
+          case _ => throw InvalidCurrencyForErc20Operation()
+      }
+      view.copy(transaction = tvOpt)
     }
   }
 

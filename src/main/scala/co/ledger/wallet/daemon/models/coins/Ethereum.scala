@@ -48,7 +48,7 @@ object EthereumTransactionView {
       tx.getReceiver.toEIP55,
       tx.getSender.toEIP55,
       tx.getValue.toString,
-      ERC20.from(tx.getData).toOption,
+      None,
       tx.getGasPrice.toString,
       tx.getGasLimit.toString,
       tx.getDate,
@@ -58,17 +58,8 @@ object EthereumTransactionView {
   case class ERC20(receiver: String, amount: scala.BigInt)
 
   object ERC20 {
-    private val erc20 = raw"a9059cbb0{24}([0-9a-f]{40})([0-9a-f]{64})".r
-
-    def from(byteArray: Array[Byte]): Either[String, ERC20] = {
-      if(byteArray.length == 68) {
-        val data = HexUtils.valueOf(byteArray).toLowerCase()
-        data match {
-          case erc20(receiver, amount) =>
-            Right(ERC20(receiver, scala.BigInt(amount, 16)))
-          case _ => Left(s"bad erc20 data format: $data")
-        }
-      } else Left("bad erc20 data size")
+    def from(erc20Operation: ERC20LikeOperation): ERC20 = {
+      ERC20(erc20Operation.getReceiver, erc20Operation.getValue.asScala)
     }
   }
 

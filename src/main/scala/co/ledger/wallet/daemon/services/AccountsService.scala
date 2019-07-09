@@ -50,7 +50,7 @@ class AccountsService @Inject()(daemonCache: DaemonCache) extends DaemonService 
 
   def getBalance(contract: Option[String], accountInfo: AccountInfo): Future[BigInt] =
     daemonCache.withAccount(accountInfo)(a => contract match {
-      case Some(c) => a.erc20Balance(c).liftTo[Future]
+      case Some(c) => a.erc20Balance(c)
       case None => a.balance
     })
 
@@ -60,20 +60,30 @@ class AccountsService @Inject()(daemonCache: DaemonCache) extends DaemonService 
   def getERC20Operations(tokenAccountInfo: TokenAccountInfo): Future[List[OperationView]] =
     daemonCache.withAccountAndWallet(tokenAccountInfo.accountInfo){
       case (account, wallet) =>
-      account.erc20Operations(tokenAccountInfo.tokenAddress).flatMap(_.traverse(Operations.getView(_, wallet, account)))
+        account.erc20Operations(tokenAccountInfo.tokenAddress).flatMap { operations =>
+          operations.traverse { case (coreOp, erc20Op) =>
+            Operations.getErc20View(erc20Op, coreOp, wallet, account)
+          }
+        }
     }
 
   def getERC20Operations(accountInfo: AccountInfo): Future[List[OperationView]] =
     daemonCache.withAccountAndWallet(accountInfo){
       case (account, wallet) =>
-      account.erc20Operations.flatMap(_.traverse(Operations.getView(_, wallet, account)))
+        account.erc20Operations.flatMap { operations =>
+          operations.traverse { case (coreOp, erc20Op) =>
+            Operations.getErc20View(erc20Op, coreOp, wallet, account)
+          }
+        }
     }
 
   def getTokenAccounts(accountInfo: AccountInfo): Future[List[ERC20AccountView]] =
-    daemonCache.withAccount(accountInfo)(_.erc20Accounts.map(_.map(ERC20AccountView(_))).liftTo[Future])
+    daemonCache.withAccount(accountInfo)(_.erc20Accounts.liftTo[Future].flatMap { accounts =>
+      Future.sequence(accounts.map(ERC20AccountView(_)))
+    })
 
   def getTokenAccount(tokenAccountInfo: TokenAccountInfo): Future[ERC20AccountView] =
-    daemonCache.withAccount(tokenAccountInfo.accountInfo)(_.erc20Account(tokenAccountInfo.tokenAddress).map(ERC20AccountView(_)).liftTo[Future])
+    daemonCache.withAccount(tokenAccountInfo.accountInfo)(_.erc20Account(tokenAccountInfo.tokenAddress).liftTo[Future].flatMap(ERC20AccountView(_)))
 
   def accountFreshAddresses(accountInfo: AccountInfo): Future[Seq[FreshAddressView]] = {
     daemonCache.getFreshAddresses(accountInfo)
